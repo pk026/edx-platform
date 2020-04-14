@@ -1,18 +1,29 @@
+<%page args="section_data" expression_filter="h"/>
+<%namespace name='static' file='/static_content.html'/>
+<%!
+from django.utils.translation import ugettext as _
+from openedx.core.djangolib.markup import HTML, Text
+%>
+
 <div class="data-download-container  action-type-container">
     <ul class="data-download-nav">
 
         <li class="nav-item ">
             <button type="button" class="btn-link reports  active-section" data-section="reports">Reports</button>
         </li>
+        %if settings.FEATURES.get('ENABLE_GRADE_DOWNLOADS'):
         <li class="nav-item">
             <button type="button" class="btn-link problem-report" data-section="problem">Problem Report</button>
         </li>
         <li class="nav-item">
             <button type="button" class="btn-link certificates" data-section="certificate">Certificates</button>
         </li>
+        %if settings.FEATURES.get('ALLOW_COURSE_STAFF_GRADE_DOWNLOADS') or section_data['access']['admin']:
         <li class="nav-item">
             <button type="button" class="btn-link grading" data-section="grading">Grading</button>
         </li>
+        %endif
+        %endif
 
     </ul>
     <section id="reports" class="idash-section tab-data" aria-labelledby="header-reports">
@@ -32,6 +43,7 @@
                             class="${'is-disabled' if disable_buttons else ''}"
                             aria-disabled="${'true' if disable_buttons else 'false'}">Anonymized Student IDs
                     </option>
+                    %if settings.FEATURES.get('ENABLE_GRADE_DOWNLOADS'):
                     <option value="profileInformation"
                             data-endpoint="${ section_data['get_students_features_url'] }"
                             data-csv="true">Profile Information
@@ -45,13 +57,18 @@
                             data-endpoint="${ section_data['get_students_features_url'] }">
                         List enrolled students profile information
                     </option>
+                    %if section_data['show_generate_proctored_exam_report_button']:
                     <option value="proctoredExamResults"
                             data-endpoint="${ section_data['list_proctored_results_url'] }">Proctored exam results
                     </option>
+                    %endif
+                    %if section_data['course_has_survey']:
                     <option value="surveyResultReport"
                             data-endpoint="${ section_data['course_survey_results_url'] }">
                         Survey Result report
                     </option>
+                    %endif
+                    %if settings.FEATURES.get('ALLOW_COURSE_STAFF_GRADE_DOWNLOADS') or section_data['access']['admin']:
                     <option value="ORADataReport" data-graderelated="true"
                             data-endpoint="${ section_data['export_ora2_data_url'] }">ORA Data
                         report
@@ -59,8 +76,10 @@
                     <option data-graderelated="true" value="problemGradeReport"
                     data-endpoint="${ section_data['problem_grade_report_url'] }">Problem Grade report
                     </option>
+                    %endif
+                    %endif
                 </select>
-                <button class="btn-brand download-report" type="button" value="download report">Download
+                <button class="btn-brand download-report ml-10" type="button" value="download report">Download
                     report
                 </button>
             </div>
@@ -85,8 +104,10 @@
                 multiple times. Clicking these buttons multiple times will significantly slow the generation \
                 process.")}
             </p>
+            % if not disable_buttons:
             <p hidden="hidden" class="selectionInfo listEnrolledPeople">${_("For smaller courses, click to list \
                 profile information for enrolled students directly on this page:")}</p>
+            %endif
             <p hidden="hidden" class="selectionInfo reports profileInformation">${_("Click to generate a CSV file of \
                 all students enrolled in this course, along with profile information such as email address and \
                 username:")}</p>
@@ -102,6 +123,7 @@
         </div>
 
     </section>
+    %if settings.FEATURES.get('ENABLE_GRADE_DOWNLOADS'):
     <section id="certificate" class="idash-section tab-data" aria-labelledby="header-cert">
         <h6 class="mb-15" id="header-cert">
             <strong>${_("NOTE")}: </strong>
@@ -117,7 +139,7 @@
                 certificates
             </option>
         </select>
-        <button  class="mb-20 btn-brand download-report" type="button" value="download report">Download
+        <button  class="mb-20 btn-brand download-report ml-10" type="button" value="download report">Download
             report
         </button>
         <div>
@@ -144,6 +166,8 @@
                 class="btn-brand mb-20" type="button" value="download report">Download
             report
         </button>
+        <% max_entries = settings.FEATURES.get('MAX_PROBLEM_RESPONSES_COUNT') %>
+        %if max_entries is not None:
         <p class="mb-15">
             <strong>${_("NOTE")}: </strong>
             ${_("The generated report is limited to {max_entries} responses. If you expect more than {max_entries} "
@@ -152,10 +176,11 @@
         </p>
         %endif
     </section>
+    %if settings.FEATURES.get('ALLOW_COURSE_STAFF_GRADE_DOWNLOADS') or section_data['access']['admin']:
     <section id="grading" class="idash-section tab-data" aria-labelledby="header-grading">
         <h6 class="mb-15" id="header-grading">
             <strong>${_("NOTE")}: </strong>
-            Please select the report type and then click Download Report button
+            Please select learner status and then click Download Report button to download Course Grade Report
         </h6>
         <br>
 
@@ -165,7 +190,7 @@
             <option value="false">All Learners</option>
         </select>
 
-        <button class="mb-20 btn-brand grade-report-download" type="button"
+        <button class="mb-20 btn-brand grade-report-download ml-10" type="button"
                 value="download report"
                 data-endpoint="${ section_data['calculate_grades_csv_url'] }">Download Report
         </button>
@@ -173,6 +198,8 @@
             <p>${_("Click to generate a CSV grade report for all currently enrolled students.")}</p>
         </div>
     </section>
+    %endif
+    %endif
     <div class="request-response message msg-confirm copy" id="report-request-response"></div>
     <div class="request-response-error message msg-error copy" id="report-request-response-error"></div>
 
@@ -189,11 +216,15 @@
         ${_("The reports listed below are available for download, identified by UTC date and time of generation.")}
     </p>
 
+    %if settings.FEATURES.get('ENABLE_ASYNC_ANSWER_DISTRIBUTION'):
     <p>
         ${_("The answer distribution report listed below is generated periodically by an automated background process. \
         The report is cumulative, so answers submitted after the process starts are included in a subsequent report. \
         The report is generated several times per day.")}
     </p>
+    %endif
+
+    ## Translators: a table of URL links to report files appears after this sentence.
     <p>
         ${Text(_("{strong_start}Note{strong_end}: {ul_start}{li_start}To keep student data secure, you cannot save or \
         email these links for direct access. Copies of links expire within 5 minutes.{li_end}{li_start}Report files \
@@ -212,7 +243,9 @@
          data-endpoint="${ section_data['list_report_downloads_url'] }"></div>
 
 </div>
-<div id="data_download_2" class="running-tasks-container action-type-container">
+
+%if settings.FEATURES.get('ENABLE_INSTRUCTOR_BACKGROUND_TASKS'):
+<div class="running-tasks-container action-type-container">
     <hr>
     <h3 class="hd hd-3">${_("Pending Tasks")}</h3>
     <div class="running-tasks-section">
@@ -222,4 +255,5 @@
     </div>
     <div class="no-pending-tasks-message"></div>
 </div>
+%endif
 

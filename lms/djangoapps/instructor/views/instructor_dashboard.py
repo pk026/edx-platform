@@ -66,6 +66,7 @@ from xmodule.tabs import CourseTab
 
 from .tools import get_units_with_due_date, title_or_url
 from .. import permissions
+from ..toggles import data_download_v2_is_enabled
 
 log = logging.getLogger(__name__)
 
@@ -103,7 +104,7 @@ def show_analytics_dashboard_message(course_key):
 
 
 @ensure_csrf_cookie
-@cache_control(no_cache=True, no_store=True, must_revalidate=True)
+@cache_control(no_cache=False, no_store=False, must_revalidate=False)
 def instructor_dashboard_2(request, course_id):
     """ Display the instructor dashboard for a course. """
     try:
@@ -685,9 +686,9 @@ def _section_data_download(course, access):
         settings.FEATURES.get('ENABLE_SPECIAL_EXAMS', False) and
         course.enable_proctored_exams
     )
-
+    section_key = 'data_download_2' if data_download_v2_is_enabled() else 'data_download'
     section_data = {
-        'section_key': 'data_download',
+        'section_key': section_key,
         'section_display_name': _('Data Download'),
         'access': access,
         'show_generate_proctored_exam_report_button': show_proctored_report_button,
